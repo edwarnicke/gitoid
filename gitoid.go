@@ -17,8 +17,11 @@
 package gitoid
 
 import (
+	"bytes"
+	"crypto/sha1" // #nosec G505
 	"fmt"
 	"hash"
+	"io"
 )
 
 // GitObjectType type of git object - current values are "blob", "commit", "tag", "tree".
@@ -31,16 +34,59 @@ const (
 	TREE   GitObjectType = "tree"
 )
 
-// New - new GitOID hash.Hash.  Writes the git object header to the provided hash and then returns that Hash.
-//       From there the contents themselves can be written to the hash.Hash and the Hash value itself can be
-//       computed using hash.Hash.Sum()
-func New(gitObjectType GitObjectType, contentLength int, h hash.Hash) hash.Hash {
-	h.Write(Header(gitObjectType, contentLength))
+type GitOID struct {
+	gitObjectType GitObjectType
+	h             hash.Hash
+	hashName      string
+}
 
-	return h
+// New - create a new GitOID
+//       by default git object type is "blob" and hash is sha1
+func New(reader io.Reader, opts ...Option) (*GitOID, error) {
+	o := &option{
+		gitObjectType: BLOB,
+		/* #nosec G401 */
+		h:        sha1.New(),
+		hashName: "sha1",
+	}
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	g := &GitOID{
+		gitObjectType: o.gitObjectType,
+		h:             o.h,
+		hashName:      o.hashName,
+	}
+
+	buf := bytes.NewBuffer(nil)
+
+	contentLength, err := io.Copy(buf, reader)
+	if err != nil {
+		return nil, fmt.Errorf("error copying reader to buffer in gitoid.New: %w", err)
+	}
+
+	g.h.Write(Header(g.gitObjectType, contentLength))
+
+	_, err = io.Copy(g.h, buf)
+	if err != nil {
+		return nil, fmt.Errorf("error copying buffer to hash.Hash.Writer in gitoid.New: %w", err)
+	}
+
+	return g, nil
 }
 
 // Header - returns the git object header from the gitObjectType and contentLength.
-func Header(gitObjectType GitObjectType, contentLength int) []byte {
+func Header(gitObjectType GitObjectType, contentLength int64) []byte {
 	return []byte(fmt.Sprintf("%s %d\000", gitObjectType, contentLength))
+}
+
+// String - returns the gitoid in lowercase hex.
+func (g *GitOID) String() string {
+	return fmt.Sprintf("%x", g.h.Sum(nil))
+}
+
+// URI - returns the gitoid as a URI (https://www.iana.org/assignments/uri-schemes/prov/gitoid)
+func (g *GitOID) URI() string {
+	return fmt.Sprintf("gitoid:%s:%s:%s", g.gitObjectType, g.hashName, g)
 }

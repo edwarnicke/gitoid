@@ -17,11 +17,8 @@
 package gitoid_test
 
 import (
-	"crypto/sha1" // #nosec
-	"crypto/sha256"
 	"fmt"
-	"io/ioutil"
-	"testing"
+	"os"
 
 	"github.com/edwarnicke/gitoid"
 )
@@ -30,59 +27,38 @@ const (
 	filename = "LICENSE"
 )
 
-func Test_gitoid_sha1(t *testing.T) {
-	t.Parallel()
-
-	input, err := ioutil.ReadFile(filename)
-
-	if err != nil {
-		t.Fatalf("error opening %s: %s", filename, err)
-	}
-
-	gitoidHash := gitoid.New(gitoid.BLOB, len(input), sha1.New()) // #nosec
-
-	gitoidHash.Write(input)
-	result := fmt.Sprintf("%x", gitoidHash.Sum(nil))
-	expected := "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64"
-
-	if result != expected {
-		t.Fatalf("unexpected result.  Actual: %s Expected: %s", result, expected)
-	}
-}
-func Test_gitoid_sha256(t *testing.T) {
-	t.Parallel()
-
-	input, err := ioutil.ReadFile(filename)
-
-	if err != nil {
-		t.Fatalf("error opening %s: %s", filename, err)
-	}
-
-	gitoidHash := gitoid.New(gitoid.BLOB, len(input), sha256.New()) // #nosec
-
-	gitoidHash.Write(input)
-	result := fmt.Sprintf("%x", gitoidHash.Sum(nil))
-	expected := "ed43975fbdc3084195eb94723b5f6df44eeeed1cdda7db0c7121edf5d84569ab"
-
-	if result != expected {
-		t.Fatalf("unexpected result.  Actual: %s Expected: %s", result, expected)
-	}
-}
-
 func Example_gitoid_sha1() {
-	input, _ := ioutil.ReadFile(filename)
-	gitoidHash := gitoid.New(gitoid.BLOB, len(input), sha1.New()) // #nosec
-	gitoidHash.Write(input)
-	gitObjectID := gitoidHash.Sum(nil)
-	fmt.Printf("%x", gitObjectID)
+	file, _ := os.Open(filename)
+	defer file.Close()
+
+	gitoidHash, _ := gitoid.New(file)
+	fmt.Println(gitoidHash)
 	// Output: 261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64
 }
 
+func Example_gitoid_uri_sha1() {
+	file, _ := os.Open(filename)
+	defer file.Close()
+
+	gitoidHash, _ := gitoid.New(file)
+	fmt.Println(gitoidHash.URI())
+	// Output: gitoid:blob:sha1:261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64
+}
+
 func Example_gitoid_sha256() {
-	input, _ := ioutil.ReadFile(filename)
-	gitoidHash := gitoid.New(gitoid.BLOB, len(input), sha256.New()) // #nosec
-	gitoidHash.Write(input)
-	gitObjectID := gitoidHash.Sum(nil)
-	fmt.Printf("%x", gitObjectID)
+	file, _ := os.Open(filename)
+	defer file.Close()
+
+	gitoidHash, _ := gitoid.New(file, gitoid.WithSha256())
+	fmt.Println(gitoidHash)
 	// Output: ed43975fbdc3084195eb94723b5f6df44eeeed1cdda7db0c7121edf5d84569ab
+}
+
+func Example_gitoid_uri_sha256() {
+	file, _ := os.Open(filename)
+	defer file.Close()
+
+	gitoidHash, _ := gitoid.New(file, gitoid.WithSha256())
+	fmt.Println(gitoidHash.URI())
+	// Output: gitoid:blob:sha256:ed43975fbdc3084195eb94723b5f6df44eeeed1cdda7db0c7121edf5d84569ab
 }
