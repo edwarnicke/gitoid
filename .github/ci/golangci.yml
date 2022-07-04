@@ -51,3 +51,4 @@ linters:
     - interfacer
     - maligned
     - gofumpt
+    - varnamelen
