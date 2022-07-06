@@ -1,5 +1,7 @@
 gitoid provides a simple library to compute gitoids (git object ids)
 
+
+### Default Usage
 By default it produces gitoids for git object type blob using sha1:
 
 ```go
@@ -11,7 +13,23 @@ fmt.Println(gitoidHash.URI())
 // Output: gitoid:blob:sha1:261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64
 ```
 
-but it can easily be used to compute gitoids using sha256:
+### GitOid from string or []byte
+
+It's simple to compute the gitoid from a string or []byte by using bytes.NewBuffer:
+
+```go
+input := []byte("example")
+gitoidHash, _ := gitoid.New(bytes.NewBuffer(input))
+fmt.Println(gitoidHash)
+// Output: 96236f8158b12701d5e75c14fb876c4a0f31b963
+fmt.Println(gitoidHash.URI())
+// Output: gitoid:blob:sha1:96236f8158b12701d5e75c14fb876c4a0f31b963
+```
+
+### SHA256 gitoids
+
+Git defaults to computing gitoids with sha1.  Git also supports sha256 gitoids.  Sha256 gitoids are supported using
+an Option:
 
 ```go
 var reader os.Reader
@@ -22,14 +40,23 @@ fmt.Println(gitoidHash.URI())
 // Output: gitoid:blob:sha256:ed43975fbdc3084195eb94723b5f6df44eeeed1cdda7db0c7121edf5d84569ab
 ```
 
-or compute gitoids for another git object type:
+### Other git object types
+
+git has four object types: blob, tree, commit, tag.  By default gitoid using object type blob.
+You may optionally specify another object type using an Option:
 
 ```go
 var reader os.Reader
 gitoidHash, err := gitoid.New(reader, gitoid.WithGitObjectType(gitoid.COMMIT))
 ```
 
-or assert a contentLength to be read from the reader (note: if contentLength bytes are unavailable gitoid.New will return an error):
+### Assert ContentLength
+
+git object ids consist of hash over a header followed by the file contents.  The header contains the length of the file
+contents.  By default, gitoid simply copies the reader into a buffer to establish its contentLength to compute the header.
+
+If you wish to assert the contentLength yourself, you may do so with an Option: 
+
 ```go
 var reader os.Reader
 var contentLength int64
@@ -38,14 +65,8 @@ fmt.Println(gitoidHash)
 // Output: 261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64
 ```
 
-if you have a string or an array of bytes it's simple to compute the gitoid by using bytes.NewBuffer:
-```go
-input := []byte("example")
-gitoidHash, _ := gitoid.New(bytes.NewBuffer(input))
-fmt.Println(gitoidHash)
-// Output: 96236f8158b12701d5e75c14fb876c4a0f31b963
-fmt.Println(gitoidHash.URI())
-// Output: gitoid:blob:sha1:96236f8158b12701d5e75c14fb876c4a0f31b963
-```
+gitoid will read the first contentLength bytes from the provided reader.  If the reader is unable to provide
+contentLength bytes a wrapper error around io.ErrUnexpectedEOF will be returned from gitoid.New
+
 
 
