@@ -17,8 +17,10 @@
 package gitoid_test
 
 import (
+	"bytes"
 	"fmt"
 	"os"
+	"testing"
 
 	"github.com/edwarnicke/gitoid"
 )
@@ -61,4 +63,34 @@ func Example_gitoid_uri_sha256() {
 	gitoidHash, _ := gitoid.New(file, gitoid.WithSha256())
 	fmt.Println(gitoidHash.URI())
 	// Output: gitoid:blob:sha256:ed43975fbdc3084195eb94723b5f6df44eeeed1cdda7db0c7121edf5d84569ab
+}
+
+func Example_gitoid_bytes_sha1() {
+	input := []byte("example")
+	gitoidHash, _ := gitoid.New(bytes.NewBuffer(input))
+	fmt.Println(gitoidHash)
+	// Output: 96236f8158b12701d5e75c14fb876c4a0f31b963
+}
+
+func Example_gitoid_sha1_content_length() {
+	file, _ := os.Open(filename)
+	defer file.Close()
+	fi, _ := file.Stat()
+
+	gitoidHash, _ := gitoid.New(file, gitoid.WithContentLength(fi.Size()))
+	fmt.Println(gitoidHash)
+	// Output: 261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64
+}
+
+func Test_gitoid_sha1_content_length(t *testing.T) {
+	t.Parallel()
+
+	file, _ := os.Open(filename)
+	defer file.Close()
+	fi, _ := file.Stat()
+
+	_, err := gitoid.New(file, gitoid.WithContentLength(fi.Size()+1))
+	if err == nil {
+		t.Fatalf("expected error specifying contentLength in excess of available bytes.  no error detected.")
+	}
 }
