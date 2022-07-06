@@ -41,10 +41,10 @@ fmt.Println(gitoidHash)
 if you have a string or an array of bytes it's simple to compute the gitoid by using bytes.NewBuffer:
 ```go
 input := []byte("example")
-	gitoidHash, _ := gitoid.New(bytes.NewBuffer(input))
-	fmt.Println(gitoidHash)
-	// Output: 96236f8158b12701d5e75c14fb876c4a0f31b963
-	fmt.Println(gitoidHash.URI())
+gitoidHash, _ := gitoid.New(bytes.NewBuffer(input))
+fmt.Println(gitoidHash)
+// Output: 96236f8158b12701d5e75c14fb876c4a0f31b963
+fmt.Println(gitoidHash.URI())
 // Output: gitoid:blob:sha1:96236f8158b12701d5e75c14fb876c4a0f31b963
 ```
 
