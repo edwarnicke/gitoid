@@ -25,6 +25,7 @@ type option struct {
 	gitObjectType GitObjectType
 	h             hash.Hash
 	hashName      string
+	contentLength int64
 }
 
 // Option - option for GitOID creation.
@@ -42,5 +43,14 @@ func WithSha256() Option {
 func WithGitObjectType(gitObjectType GitObjectType) Option {
 	return func(o *option) {
 		o.gitObjectType = gitObjectType
+	}
+}
+
+// WithContentLength - allows the assertion of a contentLength to be read from the provided reader
+//                     only the first contentLength of data will be read from the reader
+//                     if contentLength bytes are unavailable from the reader, an error will be returned.
+func WithContentLength(contentLength int64) Option {
+	return func(o *option) {
+		o.contentLength = contentLength
 	}
 }

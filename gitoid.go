@@ -46,8 +46,9 @@ func New(reader io.Reader, opts ...Option) (*GitOID, error) {
 	o := &option{
 		gitObjectType: BLOB,
 		/* #nosec G401 */
-		h:        sha1.New(),
-		hashName: "sha1",
+		h:             sha1.New(),
+		hashName:      "sha1",
+		contentLength: 0,
 	}
 	for _, opt := range opts {
 		opt(o)
@@ -59,18 +60,31 @@ func New(reader io.Reader, opts ...Option) (*GitOID, error) {
 		hashName:      o.hashName,
 	}
 
-	buf := bytes.NewBuffer(nil)
+	// If there is no declared o.contentLength, copy the entire reader into a buffer so we can compute
+	// the contentLength
+	if o.contentLength == 0 {
+		buf := bytes.NewBuffer(nil)
 
-	contentLength, err := io.Copy(buf, reader)
-	if err != nil {
-		return nil, fmt.Errorf("error copying reader to buffer in gitoid.New: %w", err)
+		contentLength, err := io.Copy(buf, reader)
+		if err != nil {
+			return nil, fmt.Errorf("error copying reader to buffer in gitoid.New: %w", err)
+		}
+
+		reader = buf
+		o.contentLength = contentLength
 	}
 
-	g.h.Write(Header(g.gitObjectType, contentLength))
+	// Write the git object header
+	g.h.Write(Header(g.gitObjectType, o.contentLength))
 
-	_, err = io.Copy(g.h, buf)
+	// Copy the reader to the hash
+	n, err := io.Copy(g.h, io.LimitReader(reader, o.contentLength))
 	if err != nil {
-		return nil, fmt.Errorf("error copying buffer to hash.Hash.Writer in gitoid.New: %w", err)
+		return nil, fmt.Errorf("error copying reader to hash.Hash.Writer in gitoid.New: %w", err)
+	}
+
+	if n < o.contentLength {
+		return nil, fmt.Errorf("expected contentLength (%d) is less than actual contentLength (%d) in gitoid.New: %w", o.contentLength, n, io.ErrUnexpectedEOF)
 	}
 
 	return g, nil
