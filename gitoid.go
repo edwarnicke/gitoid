@@ -159,3 +159,12 @@ func FromURI(uri string) (*GitOID, error) {
 		hashValue:     hashValue,
 	}, nil
 }
+
+// Match - returns true if contents of reader generates a GitOID equal to g.
+func (g *GitOID) Match(reader io.Reader) bool {
+	g2, err := New(reader, WithGitObjectType(g.gitObjectType))
+	if err != nil {
+		return false
+	}
+	return g.Equal(g2)
+}
