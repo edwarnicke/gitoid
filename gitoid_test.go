@@ -132,3 +132,32 @@ func TestGitOID_Equal_nil(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestGitOIDMatch_match(t *testing.T) {
+	t.Parallel()
+	file, _ := os.Open(filename)
+	defer file.Close()
+
+	gitoidHash, _ := gitoid.New(file)
+
+	matchingFile, _ := os.Open(filename)
+	defer matchingFile.Close()
+
+	if !gitoidHash.Match(matchingFile) {
+		t.Fatal("failed to properly match")
+	}
+}
+
+func TestGitOIDMatch_nomatch(t *testing.T) {
+	t.Parallel()
+	file, _ := os.Open(filename)
+	defer file.Close()
+
+	gitoidHash, _ := gitoid.New(file)
+
+	doesNotMatch := bytes.NewBuffer([]byte("does not match"))
+
+	if gitoidHash.Match(doesNotMatch) {
+		t.Fatal("improperly matched")
+	}
+}
