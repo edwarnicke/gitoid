@@ -1,5 +1,6 @@
 gitoid provides a simple library to compute gitoids (git object ids)
 
+## Creating GitOIDs
 
 ### Default Usage
 By default it produces gitoids for git object type blob using sha1:
@@ -25,6 +26,20 @@ fmt.Println(gitoidHash)
 fmt.Println(gitoidHash.URI())
 // Output: gitoid:blob:sha1:96236f8158b12701d5e75c14fb876c4a0f31b963
 ```
+
+### GitOID from URIs
+
+GitOIDs can be represented as a [gitoid uri](https://www.iana.org/assignments/uri-schemes/prov/gitoid).
+
+```go
+gitoidHash, _ := gitoid.FromURI("gitoid:blob:sha1:96236f8158b12701d5e75c14fb876c4a0f31b96")
+fmt.Println(gitoidHash)
+// Output: 96236f8158b12701d5e75c14fb876c4a0f31b963
+fmt.Println(gitoidHash.URI())
+// Output: gitoid:blob:sha1:96236f8158b12701d5e75c14fb876c4a0f31b963
+```
+
+## Variations on GitOIDs
 
 ### SHA256 gitoids
 
@@ -68,5 +83,29 @@ fmt.Println(gitoidHash)
 gitoid will read the first contentLength bytes from the provided reader.  If the reader is unable to provide
 contentLength bytes a wrapper error around io.ErrUnexpectedEOF will be returned from gitoid.New
 
+## Using GitOIDs
 
+### Match contents to a GitOID
+
+```go
+var reader io.Reader
+var gitoidHash *gitoid.GitOID
+if gitoidHash.Match(reader) {
+	fmt.Println("matched")
+}
+```
+
+### Find files that match GitOID
+
+```go
+var path1 fs.FS = os.DirFS("./relative/path")
+var path2 fs.FS = os.DirFS("/absolute/path")
+var gitoidHash *gitoid.GitOID
+
+// Find a file in path1 and path2 that matches gitoidHash
+file,_ := gitoidHash.Find(path1, path2)
+
+// Find all files in path1 and path2 that matches gitoidHash
+files, := gitoidHash.FindAll(path1, path2)
+```
 
