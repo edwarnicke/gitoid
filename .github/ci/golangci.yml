@@ -53,3 +53,5 @@ linters:
     - gofumpt
     - varnamelen
     - lll
+    - wsl
+    - nlreturn
