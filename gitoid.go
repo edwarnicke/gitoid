@@ -117,3 +117,25 @@ func (g *GitOID) Bytes() []byte {
 
 	return g.hashValue
 }
+
+// Equal - returns true of g == x.
+func (g *GitOID) Equal(x *GitOID) bool {
+	if g == x {
+		return true
+	}
+
+	if g == nil || x == nil || g.hashName != x.hashName {
+		return false
+	}
+
+	if len(g.Bytes()) != len(x.Bytes()) {
+		return false
+	}
+
+	for i, v := range g.Bytes() {
+		if x.Bytes()[i] != v {
+			return false
+		}
+	}
+	return true
+}
