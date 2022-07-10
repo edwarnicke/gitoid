@@ -94,3 +94,41 @@ func Test_gitoid_sha1_content_length(t *testing.T) {
 		t.Fatalf("expected error specifying contentLength in excess of available bytes.  no error detected.")
 	}
 }
+
+func TestFromURI(t *testing.T) {
+	t.Parallel()
+	file, _ := os.Open(filename)
+	defer file.Close()
+
+	gitoidHash, _ := gitoid.New(file)
+
+	gitoidHash2, err := gitoid.FromURI("gitoid:blob:sha1:261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64")
+	if err != nil {
+		t.Fatalf("error running gitoid.FromURI: %s", err)
+	}
+
+	if !gitoidHash.Equal(gitoidHash2) {
+		t.Fatal("equality fail")
+	}
+}
+
+func TestGitOID_Equal_self(t *testing.T) {
+	t.Parallel()
+	gitoidHash, _ := gitoid.FromURI("gitoid:blob:sha1:261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64")
+	gitoidHash2 := gitoidHash
+	if !gitoidHash.Equal(gitoidHash2) {
+		t.Fatal("failed to be equal to itself")
+	}
+}
+
+func TestGitOID_Equal_nil(t *testing.T) {
+	t.Parallel()
+	var nilGitOID *gitoid.GitOID
+	gitoidHash, _ := gitoid.FromURI("gitoid:blob:sha1:261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64")
+	if nilGitOID.Equal(gitoidHash) {
+		t.Fail()
+	}
+	if gitoidHash.Equal(nilGitOID) {
+		t.Fail()
+	}
+}
