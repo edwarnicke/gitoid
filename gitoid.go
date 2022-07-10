@@ -19,9 +19,11 @@ package gitoid
 import (
 	"bytes"
 	"crypto/sha1" // #nosec G505
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 )
 
 // GitObjectType type of git object - current values are "blob", "commit", "tag", "tree".
@@ -35,6 +37,7 @@ const (
 )
 
 var ErrMayNotBeNil = errors.New("may not be nil")
+var ErrInvalidGitOIDURI = errors.New("invalid uri in gitoid.FromURI")
 
 type GitOID struct {
 	gitObjectType GitObjectType
@@ -138,4 +141,21 @@ func (g *GitOID) Equal(x *GitOID) bool {
 		}
 	}
 	return true
+}
+
+// FromURI - returns a *GitOID from a gitoid uri string - see https://www.iana.org/assignments/uri-schemes/prov/gitoid
+func FromURI(uri string) (*GitOID, error) {
+	parts := strings.Split(uri, ":")
+	if len(parts) != 4 || parts[0] != "gitoid" {
+		return nil, fmt.Errorf("%w: %q in gitoid.FromURI", ErrInvalidGitOIDURI, uri)
+	}
+	hashValue, err := hex.DecodeString(parts[3])
+	if err != nil {
+		return nil, fmt.Errorf("error decoding hash value (%s) in gitoid.FromURI: %w", parts[3], err)
+	}
+	return &GitOID{
+		gitObjectType: GitObjectType(parts[1]),
+		hashName:      parts[2],
+		hashValue:     hashValue,
+	}, nil
 }
