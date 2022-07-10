@@ -19,8 +19,8 @@ package gitoid
 import (
 	"bytes"
 	"crypto/sha1" // #nosec G505
+	"errors"
 	"fmt"
-	"hash"
 	"io"
 )
 
@@ -34,15 +34,21 @@ const (
 	TREE   GitObjectType = "tree"
 )
 
+var ErrMayNotBeNil = errors.New("may not be nil")
+
 type GitOID struct {
 	gitObjectType GitObjectType
-	h             hash.Hash
 	hashName      string
+	hashValue     []byte
 }
 
 // New - create a new GitOID
 //       by default git object type is "blob" and hash is sha1
 func New(reader io.Reader, opts ...Option) (*GitOID, error) {
+	if reader == nil {
+		return nil, fmt.Errorf("reader in gitoid.New: %w", ErrMayNotBeNil)
+	}
+
 	o := &option{
 		gitObjectType: BLOB,
 		/* #nosec G401 */
@@ -50,14 +56,9 @@ func New(reader io.Reader, opts ...Option) (*GitOID, error) {
 		hashName:      "sha1",
 		contentLength: 0,
 	}
+
 	for _, opt := range opts {
 		opt(o)
-	}
-
-	g := &GitOID{
-		gitObjectType: o.gitObjectType,
-		h:             o.h,
-		hashName:      o.hashName,
 	}
 
 	// If there is no declared o.contentLength, copy the entire reader into a buffer so we can compute
@@ -75,10 +76,10 @@ func New(reader io.Reader, opts ...Option) (*GitOID, error) {
 	}
 
 	// Write the git object header
-	g.h.Write(Header(g.gitObjectType, o.contentLength))
+	o.h.Write(Header(o.gitObjectType, o.contentLength))
 
 	// Copy the reader to the hash
-	n, err := io.Copy(g.h, io.LimitReader(reader, o.contentLength))
+	n, err := io.Copy(o.h, io.LimitReader(reader, o.contentLength))
 	if err != nil {
 		return nil, fmt.Errorf("error copying reader to hash.Hash.Writer in gitoid.New: %w", err)
 	}
@@ -87,7 +88,11 @@ func New(reader io.Reader, opts ...Option) (*GitOID, error) {
 		return nil, fmt.Errorf("expected contentLength (%d) is less than actual contentLength (%d) in gitoid.New: %w", o.contentLength, n, io.ErrUnexpectedEOF)
 	}
 
-	return g, nil
+	return &GitOID{
+		gitObjectType: o.gitObjectType,
+		hashName:      o.hashName,
+		hashValue:     o.h.Sum(nil),
+	}, nil
 }
 
 // Header - returns the git object header from the gitObjectType and contentLength.
@@ -97,7 +102,7 @@ func Header(gitObjectType GitObjectType, contentLength int64) []byte {
 
 // String - returns the gitoid in lowercase hex.
 func (g *GitOID) String() string {
-	return fmt.Sprintf("%x", g.h.Sum(nil))
+	return fmt.Sprintf("%x", g.hashValue)
 }
 
 // URI - returns the gitoid as a URI (https://www.iana.org/assignments/uri-schemes/prov/gitoid)
