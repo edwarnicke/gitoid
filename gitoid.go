@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"strings"
 )
 
@@ -167,4 +168,48 @@ func (g *GitOID) Match(reader io.Reader) bool {
 		return false
 	}
 	return g.Equal(g2)
+}
+
+// Find - return the first fs.File in paths that Matches the *GitOID g.
+func (g *GitOID) Find(paths ...fs.FS) fs.File {
+	foundFiles := g.findN(1, paths...)
+	if len(foundFiles) != 1 {
+		return nil
+	}
+	return foundFiles[0]
+}
+
+// FindAll - return all fs.Files in paths that Matches the *GitOID g.
+func (g *GitOID) FindAll(paths ...fs.FS) []fs.File {
+	return g.findN(0, paths...)
+}
+
+func (g *GitOID) findN(n int, paths ...fs.FS) []fs.File {
+	var foundFiles []fs.File
+	for _, fsys := range paths {
+		_ = fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+			if d == nil || d.IsDir() || err != nil {
+				//lint:ignore nilerr - returning non-nil error will stop the walk
+				return nil
+			}
+			file, err := fsys.Open(path)
+			defer func() { _ = file.Close() }()
+			if err != nil {
+				//lint:ignore nilerr - returning non-nil error will stop the walk
+				return nil
+			}
+			if !g.Match(file) {
+				return nil
+			}
+			foundFile, err := fsys.Open(path)
+			if err == nil {
+				foundFiles = append(foundFiles, foundFile)
+			}
+			if n > 0 && len(foundFiles) == n {
+				return io.EOF
+			}
+			return nil
+		})
+	}
+	return foundFiles
 }
