@@ -161,3 +161,44 @@ func TestGitOIDMatch_nomatch(t *testing.T) {
 		t.Fatal("improperly matched")
 	}
 }
+
+func TestGitOIDFind_found(t *testing.T) {
+	t.Parallel()
+	file, _ := os.Open(filename)
+	defer file.Close()
+
+	gitoidHash, _ := gitoid.New(file)
+
+	foundfile := gitoidHash.Find(os.DirFS("./testdata/FindTests"))
+	if !gitoidHash.Match(foundfile) {
+		t.Fatal("found non-matching file")
+	}
+}
+
+func TestGitOIDFind_notfound(t *testing.T) {
+	t.Parallel()
+	gitoidHash, _ := gitoid.New(bytes.NewBuffer([]byte("file not found")))
+
+	foundfile := gitoidHash.Find(os.DirFS("./testdata/FindTests"))
+	if foundfile != nil {
+		t.Fatal("should not have found matching file")
+	}
+}
+
+func TestGitOIDFindAll_found(t *testing.T) {
+	t.Parallel()
+	file, _ := os.Open(filename)
+	defer file.Close()
+
+	gitoidHash, _ := gitoid.New(file)
+
+	foundfiles := gitoidHash.FindAll(os.DirFS("./testdata/FindTests"))
+	for _, foundfile := range foundfiles {
+		if !gitoidHash.Match(foundfile) {
+			t.Fatal("found non-matching file")
+		}
+	}
+	if len(foundfiles) != 2 {
+		t.Fatal("did not find the expected number of files")
+	}
+}
