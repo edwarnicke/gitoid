@@ -109,3 +109,11 @@ func (g *GitOID) String() string {
 func (g *GitOID) URI() string {
 	return fmt.Sprintf("gitoid:%s:%s:%s", g.gitObjectType, g.hashName, g)
 }
+
+func (g *GitOID) Bytes() []byte {
+	if g == nil {
+		return nil
+	}
+
+	return g.hashValue
+}
