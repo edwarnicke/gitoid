@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/url"
 	"strings"
 )
 
@@ -38,7 +39,6 @@ const (
 )
 
 var ErrMayNotBeNil = errors.New("may not be nil")
-var ErrInvalidGitOIDURI = errors.New("invalid uri in gitoid.FromURI")
 
 type GitOID struct {
 	gitObjectType GitObjectType
@@ -47,7 +47,8 @@ type GitOID struct {
 }
 
 // New - create a new GitOID
-//       by default git object type is "blob" and hash is sha1
+//
+//	by default git object type is "blob" and hash is sha1
 func New(reader io.Reader, opts ...Option) (*GitOID, error) {
 	if reader == nil {
 		return nil, fmt.Errorf("reader in gitoid.New: %w", ErrMayNotBeNil)
@@ -146,17 +147,29 @@ func (g *GitOID) Equal(x *GitOID) bool {
 
 // FromURI - returns a *GitOID from a gitoid uri string - see https://www.iana.org/assignments/uri-schemes/prov/gitoid
 func FromURI(uri string) (*GitOID, error) {
-	parts := strings.Split(uri, ":")
-	if len(parts) != 4 || parts[0] != "gitoid" {
-		return nil, fmt.Errorf("%w: %q in gitoid.FromURI", ErrInvalidGitOIDURI, uri)
-	}
-	hashValue, err := hex.DecodeString(parts[3])
+	// Check if the URI can be parsed
+	parsedURI, err := url.ParseRequestURI(uri)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding hash value (%s) in gitoid.FromURI: %w", parts[3], err)
+		return nil, fmt.Errorf("uri cannot be parsed: %w", err)
+	}
+
+	if parsedURI.Scheme != "gitoid" {
+		return nil, fmt.Errorf("uri scheme must be 'gitoid'")
+	}
+
+	parts := strings.Split(parsedURI.Opaque, ":")
+
+	if len(parts) != 3 {
+		return nil, fmt.Errorf("uri path must have three parts separated by ':'")
+	}
+
+	hashValue, err := hex.DecodeString(parts[2])
+	if err != nil {
+		return nil, fmt.Errorf("error decoding hash value (%s): %w", parts[2], err)
 	}
 	return &GitOID{
-		gitObjectType: GitObjectType(parts[1]),
-		hashName:      parts[2],
+		gitObjectType: GitObjectType(parts[0]),
+		hashName:      parts[1],
 		hashValue:     hashValue,
 	}, nil
 }
